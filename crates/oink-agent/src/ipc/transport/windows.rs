@@ -81,7 +81,12 @@ fn create_for_sid(name: &str, sid: &str) -> io::Result<Arc<File>> {
     // Medium minimum allows UIAccess backend, normal UI and elevated UI for
     // the SAME SID; NWNR excludes Low. No SYSTEM/Administrators/Everyone ACE.
     // https://learn.microsoft.com/windows/win32/ipc/named-pipe-security-and-access-rights
-    let sddl = wide(&format!("O:{sid}D:P(A;;0x{CLIENT_RIGHTS:x};;;{sid})S:(ML;;NWNR;;;ME)"));
+    // In the portable build both peers are elevated. Keep medium-integrity
+    // callers outside the elevated backend even if they can read its endpoint.
+    let integrity = if crate::WINDOWS_PORTABLE { "HI" } else { "ME" };
+    let sddl = wide(&format!(
+        "O:{sid}D:P(A;;0x{CLIENT_RIGHTS:x};;;{sid})S:(ML;;NWNR;;;{integrity})"
+    ));
     // SAFETY: parser-owned descriptor and stack attributes outlive creation.
     unsafe {
         let mut descriptor = ptr::null_mut();

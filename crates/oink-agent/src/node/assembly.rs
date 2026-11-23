@@ -198,7 +198,7 @@ impl Node {
         // A restarted Windows candidate enters health-only admission before
         // input, clipboard, drag and audio owners can accept any business work.
         #[cfg(windows)]
-        if self.inner.native_services {
+        if self.inner.native_services && !crate::WINDOWS_PORTABLE {
             // Private fake-platform fixtures must not contact the installed
             // Windows update service or join its candidate health transaction.
             crate::update::startup_gate()?;

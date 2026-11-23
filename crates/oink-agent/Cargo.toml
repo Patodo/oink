@@ -95,6 +95,9 @@ windows = { version = "0.62", features = [
 [lints]
 workspace = true
 
+[features]
+windows-portable = ["oink-input/windows-portable"]
+
 [dev-dependencies]
 oink-foundation = { workspace = true, features = ["test-storage-retries"] }
 oink-audio = { workspace = true, features = ["test-support"] }

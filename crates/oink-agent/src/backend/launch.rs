@@ -197,8 +197,11 @@ pub fn reopen_entry(entry: &Path, data_dir: &Path) -> std::io::Result<()> {
     }
     #[cfg(windows)]
     {
-        let _ = entry;
-        oink_winsvc::backend::reopen(data_dir)?;
+        if crate::WINDOWS_PORTABLE {
+            spawn_detached(Command::new(entry).arg(super::REOPEN_FLAG))?;
+        } else {
+            oink_winsvc::backend::reopen(data_dir)?;
+        }
         Ok(())
     }
     #[cfg(not(any(target_os = "macos", windows)))]

@@ -58,6 +58,7 @@ oink-network.workspace = true
 [features]
 # `tauri build` 打开此特性，让前端资源嵌入可执行文件（否则 debug 构建从 devUrl 加载）。
 custom-protocol = ["tauri/custom-protocol"]
+windows-portable = ["oink-agent/windows-portable"]
 
 [target.'cfg(unix)'.dev-dependencies]
 libc = "0.2"

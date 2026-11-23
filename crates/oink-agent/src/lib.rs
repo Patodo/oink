@@ -1,6 +1,8 @@
 //! Background agent composition and authenticated local UI/CLI interfaces.
 //! Resource owners apply state; device cards expose coherent presentation snapshots.
 
+pub const WINDOWS_PORTABLE: bool = cfg!(all(windows, feature = "windows-portable"));
+
 // Share the RT heap audit with the DSP tests; enabled only in this test binary.
 mod agent_api;
 #[cfg(test)]

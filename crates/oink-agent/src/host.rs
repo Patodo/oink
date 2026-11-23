@@ -129,7 +129,7 @@ impl AgentHost {
             #[cfg(windows)]
             let termination = {
                 let mut termination = termination;
-                if oink_winsvc::client::service_installation()? {
+                if !crate::WINDOWS_PORTABLE && oink_winsvc::client::service_installation()? {
                     let (send, receive) = tokio::sync::oneshot::channel();
                     let watch = oink_winsvc::backend::watch_service_stop(move || {
                         let _ = send.send(());
@@ -391,7 +391,7 @@ pub const EXIT_ALREADY_RUNNING: u8 = 3;
 /// 独立服务进程的入口（Windows 上 `oink.exe --service`）：没有窗口，运行到经 IPC 收到 `stop`。
 /// 返回进程退出码。调用前先初始化日志（`logs::init_service`）。
 pub fn run_service() -> u8 {
-    #[cfg(windows)]
+    #[cfg(all(windows, not(feature = "windows-portable")))]
     match oink_winsvc::backend::uiaccess() {
         Ok(true) => {}
         Ok(false) => {

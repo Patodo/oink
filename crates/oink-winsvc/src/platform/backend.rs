@@ -36,6 +36,20 @@ pub fn require_interactive_ui() -> io::Result<()> {
     }
 }
 
+/// The portable build runs both roles under an elevated interactive user.
+pub fn require_elevated_interactive() -> io::Result<()> {
+    require_interactive_ui()?;
+    // SAFETY: query-only current-process pseudo handle.
+    let own = token(unsafe { GetCurrentProcess() })?;
+    if number(own.0, TokenElevation)? == 0 {
+        return Err(io::Error::new(
+            io::ErrorKind::PermissionDenied,
+            "Oink Portable requires administrator privileges",
+        ));
+    }
+    Ok(())
+}
+
 pub(super) fn token_uiaccess(token: HANDLE) -> io::Result<u32> {
     number(token, TokenUIAccess)
 }

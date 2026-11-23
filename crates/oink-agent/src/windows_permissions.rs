@@ -72,12 +72,14 @@ impl Observer {
         }
     }
     pub(crate) fn sample(&mut self, now: std::time::Instant) -> Option<Observation> {
-        self.sampler.sample(
-            now,
-            self.notifications.changed(),
-            native::firewall_state,
-            native::service_state,
-        )
+        self.sampler
+            .sample(now, self.notifications.changed(), native::firewall_state, || {
+                if crate::WINDOWS_PORTABLE {
+                    PermissionState::NotApplicable
+                } else {
+                    native::service_state()
+                }
+            })
     }
 }
 

@@ -20,6 +20,9 @@ pub fn cursor_position() -> Result<Point, String> {
         .map_err(|e| e.to_string())
 }
 pub(super) fn installed() -> io::Result<bool> {
+    if cfg!(feature = "windows-portable") {
+        return Ok(false);
+    }
     static INSTALLATION: OnceLock<Result<bool, String>> = OnceLock::new();
     INSTALLATION
         .get_or_init(|| client::service_installation().map_err(|e| e.to_string()))
@@ -30,20 +33,18 @@ pub(crate) fn initialize() -> Result<(), InputError> {
     // Warm identity/configuration and the owner BEFORE the realtime capture
     // loop starts. Neither file ACL inspection nor MMCSS registration belongs
     // to the first remote motion's initialization critical section.
-    if oink_foundation::debug_env!(os "OINK_REQUIRE_INPUT_SERVICE").is_some()
-        || installed().map_err(|e| InputError::Platform(e.to_string()))?
-    {
+    if service_required() || installed().map_err(|e| InputError::Platform(e.to_string()))? {
         client::initialize().map_err(|e| InputError::Platform(format!("helper owner initialization: {e}")))?;
     }
     Ok(())
 }
 pub(crate) fn optional(cmd: Command) -> Result<Option<ServiceStatus>, InputError> {
-    request_optional(
-        oink_foundation::debug_env!(os "OINK_REQUIRE_INPUT_SERVICE").is_some(),
-        installed,
-        || client::request(cmd),
-    )
-    .map_err(|e| InputError::Platform(format!("Windows input service: {e}")))
+    request_optional(service_required(), installed, || client::request(cmd))
+        .map_err(|e| InputError::Platform(format!("Windows input service: {e}")))
+}
+
+fn service_required() -> bool {
+    !cfg!(feature = "windows-portable") && oink_foundation::debug_env!(os "OINK_REQUIRE_INPUT_SERVICE").is_some()
 }
 fn request_optional<T>(
     required: bool,

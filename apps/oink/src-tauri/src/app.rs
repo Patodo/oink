@@ -25,6 +25,9 @@ fn startup_retry(_state: State<'_, Backend>) {
 fn startup_details() -> String {
     #[cfg(windows)]
     {
+        if oink_agent::WINDOWS_PORTABLE {
+            return format!("Oink Portable\nLogs: {}", oink_foundation::paths::log_dir().display());
+        }
         format!(
             "{}\nUser logs: {}\nService logs: {}",
             oink_winsvc::backend::startup_details().unwrap_or_else(|e| e.to_string()),
@@ -41,7 +44,7 @@ fn startup_details() -> String {
 async fn startup_open_logs() -> Result<(), crate::commands::ShellError> {
     let user = crate::commands::open_folder(oink_foundation::paths::log_dir()).await;
     #[cfg(windows)]
-    {
+    if !oink_agent::WINDOWS_PORTABLE {
         let path =
             oink_winsvc::backend::service_log_dir().map_err(|_| crate::commands::ShellError::OpenFolderFailed)?;
         if path.is_dir() {

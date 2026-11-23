@@ -32,6 +32,9 @@ fn main() {
         println!("cargo:rerun-if-changed={}", manifest.display());
         println!("cargo:rustc-link-arg=/MANIFEST:EMBED");
         println!("cargo:rustc-link-arg=/MANIFESTINPUT:{}", manifest.display());
+        if cfg!(feature = "windows-portable") {
+            println!("cargo:rustc-link-arg-bin=oink=/MANIFESTUAC:level='requireAdministrator' uiAccess='false'");
+        }
         // Avoid a second manifest resource; icons and other Tauri resources
         // remain generated normally. The product's dependency stays identical.
         tauri_build::try_build(

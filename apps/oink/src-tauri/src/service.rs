@@ -205,7 +205,11 @@ pub fn dispatch_args() -> Option<ExitCode> {
         }
         // Logging starts inside: its roots are fixed only after the entry checks.
         #[cfg(windows)]
-        PRELOGIN_ARG => Some(ExitCode::from(oink_agent::prelogin::run())),
+        PRELOGIN_ARG => Some(if oink_agent::WINDOWS_PORTABLE {
+            ExitCode::FAILURE
+        } else {
+            ExitCode::from(oink_agent::prelogin::run())
+        }),
         #[cfg(windows)]
         STOP_SERVICE_ARG => {
             oink_agent::logs::init();
@@ -226,21 +230,56 @@ pub fn dispatch_args() -> Option<ExitCode> {
     }
 }
 
-/// Startup only; a Windows UI requests the SYSTEM launch broker exactly once.
+#[cfg(windows)]
+enum StartedBackend {
+    Installed(oink_winsvc::backend::StartedProcess),
+    Portable(std::process::Child),
+}
+
+#[cfg(windows)]
+impl StartedBackend {
+    fn start(data_dir: &Path, waiting: impl FnMut(String)) -> std::io::Result<Self> {
+        if oink_agent::WINDOWS_PORTABLE {
+            let exe = std::env::current_exe()?;
+            oink_agent::backend::launch::spawn_detached(Command::new(exe).arg(SERVICE_ARG)).map(Self::Portable)
+        } else {
+            oink_winsvc::backend::start_observed(data_dir, waiting).map(Self::Installed)
+        }
+    }
+
+    fn id(&self) -> u32 {
+        match self {
+            Self::Installed(process) => process.id(),
+            Self::Portable(process) => process.id(),
+        }
+    }
+
+    fn exit_code(&mut self) -> std::io::Result<Option<u32>> {
+        match self {
+            Self::Installed(process) => process.exit_code(),
+            Self::Portable(process) => Ok(process
+                .try_wait()?
+                .and_then(|status| status.code())
+                .map(|code| code as u32)),
+        }
+    }
+}
+
+/// Startup only; launch the backend once and wait for its IPC endpoint.
 #[cfg(windows)]
 pub fn start_once(api: &RemoteApi, waiting: impl FnMut(String)) -> Result<(), String> {
     let mut seen_owner = false;
-    let launched = match oink_agent::instance::is_running(api.data_dir()) {
+    let mut launched = match oink_agent::instance::is_running(api.data_dir()) {
         Some(true) => {
             seen_owner = true;
             None
         }
-        Some(false) => Some(oink_winsvc::backend::start_observed(api.data_dir(), waiting).map_err(|e| e.to_string())?),
+        Some(false) => Some(StartedBackend::start(api.data_dir(), waiting).map_err(|e| e.to_string())?),
         None => return Err("backend_ownership_unavailable".into()),
     };
     let deadline = Instant::now() + START_TIMEOUT;
     loop {
-        if let Some(process) = &launched
+        if let Some(process) = &mut launched
             && let Some(code) = process
                 .exit_code()
                 .map_err(|e| format!("backend exit query failed: {e}"))?
@@ -278,13 +317,10 @@ pub fn start_once(api: &RemoteApi, waiting: impl FnMut(String)) -> Result<(), St
 }
 
 #[cfg(windows)]
-fn validate_running_backend(_api: &RemoteApi) -> Result<(), String> {
-    #[cfg(windows)]
-    {
-        use oink_agent::api::AgentApi;
-        if _api.status().map_err(|e| e.to_string())?.backend_uiaccess != Some(true) {
-            return Err("现有后台没有 UIAccess；请退出后通过 OinkInput 系统服务重新打开".into());
-        }
+fn validate_running_backend(api: &RemoteApi) -> Result<(), String> {
+    use oink_agent::api::AgentApi;
+    if !oink_agent::WINDOWS_PORTABLE && api.status().map_err(|e| e.to_string())?.backend_uiaccess != Some(true) {
+        return Err("现有后台没有 UIAccess；请退出后通过 OinkInput 系统服务重新打开".into());
     }
     Ok(())
 }

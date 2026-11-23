@@ -59,7 +59,10 @@ impl<T: PartialEq> Exported<T> {
 /// install, nothing elsewhere (macOS, development builds, test fixtures).
 pub(crate) fn machine_layer(node: &Node) -> Box<dyn MachineLayer> {
     #[cfg(windows)]
-    if node.native_services_enabled() && oink_winsvc::client::service_installation().unwrap_or(false) {
+    if !crate::WINDOWS_PORTABLE
+        && node.native_services_enabled()
+        && oink_winsvc::client::service_installation().unwrap_or(false)
+    {
         return Box::new(windows::Service(node.clone()));
     }
     let _ = node;
@@ -76,7 +79,8 @@ impl Node {
 
     pub(crate) fn start_prelogin_export(&self) -> Option<tokio::task::JoinHandle<()>> {
         #[cfg(windows)]
-        if self.inner.profile == crate::node::Profile::User
+        if !crate::WINDOWS_PORTABLE
+            && self.inner.profile == crate::node::Profile::User
             && self.native_services_enabled()
             && oink_winsvc::client::service_installation().unwrap_or(false)
         {

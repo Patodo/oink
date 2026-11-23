@@ -70,6 +70,9 @@ fn error(message: &str) -> crate::api::ApiError {
     }
 }
 pub(crate) fn status(dir: &Path) -> crate::api::ApiResult<Status> {
+    if crate::WINDOWS_PORTABLE {
+        return Err(error("免安装版不支持自动解锁"));
+    }
     let _guard = OPERATION.lock().map_err(|_| error("自动解锁不可用"))?;
     let enabled = platform_status().map_err(error)?;
     let failure = platform_failure().or_else(|| {
@@ -89,6 +92,9 @@ pub(crate) fn status(dir: &Path) -> crate::api::ApiResult<Status> {
     })
 }
 pub(crate) fn save(dir: &Path, password: Password) -> crate::api::ApiResult<()> {
+    if crate::WINDOWS_PORTABLE {
+        return Err(error("免安装版不支持自动解锁"));
+    }
     let _guard = OPERATION.lock().map_err(|_| error("自动解锁不可用"))?;
     if password.expose().is_empty() || password.expose().len() > 4096 || password.expose().contains('\0') {
         return Err(crate::api::ApiError::InvalidArgument {
@@ -100,6 +106,9 @@ pub(crate) fn save(dir: &Path, password: Password) -> crate::api::ApiResult<()> 
     clear_failure(dir).map_err(error)
 }
 pub(crate) fn disable(dir: &Path) -> crate::api::ApiResult<()> {
+    if crate::WINDOWS_PORTABLE {
+        return Err(error("免安装版不支持自动解锁"));
+    }
     let _guard = OPERATION.lock().map_err(|_| error("自动解锁不可用"))?;
     platform_disable().map_err(error)?;
     sync::clear_last(dir);
@@ -138,14 +147,14 @@ pub(crate) fn source_unlocked(profile: crate::node::Profile, locked: Option<bool
 
 pub(crate) fn remote_input(source: DeviceId, age_ms: u32) {
     #[cfg(windows)]
-    {
+    if !crate::WINDOWS_PORTABLE {
         let _ = oink_winsvc::auto_unlock_remote_input(source_tag(source), age_ms);
     }
     #[cfg(not(windows))]
     let _ = (source, age_ms);
 }
 pub(crate) fn attempt(node: &crate::node::Node, epoch: u64, source: DeviceId, initial_input_age_ms: Option<u32>) {
-    if node.profile() != crate::node::Profile::User {
+    if crate::WINDOWS_PORTABLE || node.profile() != crate::node::Profile::User {
         return;
     }
     record_flow_diagnostic(8, epoch, 0);
@@ -315,7 +324,7 @@ fn latched_failure(dir: &Path) -> Option<FailureKind> {
 /// this device is paused.
 pub(crate) fn local_unlock_edge(node: &crate::node::Node) {
     let epoch = sync::next_edge_epoch();
-    if node.profile() != crate::node::Profile::User || !platform_console_session() {
+    if crate::WINDOWS_PORTABLE || node.profile() != crate::node::Profile::User || !platform_console_session() {
         sync::record_diagnostic(1, epoch, 3);
         return;
     }
@@ -341,7 +350,7 @@ pub(crate) fn local_unlock_edge(node: &crate::node::Node) {
 pub(crate) fn sync_attempt(node: &crate::node::Node, source: DeviceId, epoch: u64) {
     use sync::{SourceAnswer, SyncSkip};
     sync::record_diagnostic(3, epoch, 0);
-    if node.profile() != crate::node::Profile::User {
+    if crate::WINDOWS_PORTABLE || node.profile() != crate::node::Profile::User {
         sync::record_diagnostic(4, epoch, 1);
         return;
     }

@@ -20,6 +20,14 @@ Oink 是 Oink Is Not only a KVM 的缩写，是一款在多台 Windows 和 Mac �
 - **Mac**：Apple 芯片（arm64），macOS 14.2 及以上；Intel（x64），macOS 14.2 及以上（未经测试）
 - **Windows**：x64，Windows 10 1809（build 17763）及以上，或 Windows 11。22H2 之前的 Windows 10 版本未经测试。Windows 10 LTSC（如 LTSC 2019 / LTSC 2021）不自带 WebView2 Runtime，请先安装 Microsoft Edge WebView2 Runtime（Evergreen）：https://developer.microsoft.com/microsoft-edge/webview2/
 
+### Windows 免安装版
+
+这个 fork 提供非官方 Windows x64 免安装构建。解压 ZIP 后双击 `Oink.exe`，并同意 UAC 提示。程序需要管理员权限和 WebView2 Runtime。配置、配对信息与日志存放在程序旁的 `Data` 目录。迁移或手动更新前先从托盘退出，再一起保留 `Data`。如果本机正在运行已安装的 Oink，请先退出该实例。
+
+免安装版在当前登录桌面运行，不安装 OinkInput 系统服务、资源管理器扩展或虚拟麦克风驱动。登录界面控制、自动解锁、登录时启动、崩溃报告上传和 MSI 更新不可用。Windows 也可能限制从普通权限程序向管理员权限窗口拖放。
+
+在 Windows 上准备仓库指定的 Node.js、npm、Rust，以及 Python 3、CMake、MSVC C++ 工具和 Windows SDK 后，在仓库根目录运行 `python build-support/package-windows-portable.py`。未签名 ZIP 生成到 `dist/portable/`。
+
 如果 SmartScreen 提示“Windows 已保护你的电脑”，仅在出现相应选项时点击 **更多信息 → 仍要运行**。UAC 可能显示发布者未知。
 
 ### 赞助

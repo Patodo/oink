@@ -1,0 +1,22 @@
+Oink Portable for Windows x64
+Unofficial modified build of Oink (https://github.com/oinkvm/oink).
+
+Extract the ZIP to a folder you control on a local disk. Double-click Oink.exe
+and approve the Windows administrator prompt. Windows 10 1809 or newer and
+Microsoft Edge WebView2 Runtime are required.
+
+Settings, pairing state, logs and WebView2 data are stored in Data next to
+Oink.exe. To move or update this copy, quit Oink from the tray first, then
+carry Data over to the new location. Keep the folder private and writable only
+by trusted users. To remove the portable copy, quit Oink and delete its folder.
+
+Oink Portable runs in the signed-in desktop session and does not install the
+OinkInput service, an Explorer extension or a virtual microphone driver.
+Login-screen control, auto-unlock, start at sign-in, crash-report submission
+and installer-based updates are unavailable. Windows can block drag-and-drop
+from a non-elevated app into an elevated Oink window. If Windows Firewall
+prompts for network access, allow Oink on trusted private networks for LAN
+sharing. Exit any installed Oink instance before running this copy.
+
+Source and build instructions:
+https://github.com/Patodo/oink/tree/codex/windows-portable

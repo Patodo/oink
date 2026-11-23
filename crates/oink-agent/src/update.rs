@@ -79,9 +79,13 @@ impl Controller {
             error: error.or(Some(Error::NotConfigured)),
             failed_build: None,
             critical_prompted_build: policy.critical_prompted_build,
-            scope: if cfg!(windows) { Scope::Machine } else { Scope::User },
+            scope: if cfg!(windows) && !crate::WINDOWS_PORTABLE {
+                Scope::Machine
+            } else {
+                Scope::User
+            },
             // The Windows service also accepts the user's preferences unelevated.
-            can_change_policy: true,
+            can_change_policy: !crate::WINDOWS_PORTABLE,
         };
         let restored = presentation::outcome(dir, status.current_build);
         if let Some(result) = restored {
@@ -156,12 +160,17 @@ impl Node {
             return lock(&self.inner.update).status.clone();
         }
         #[cfg(windows)]
-        if let Ok(status) = windows::status() {
+        if !crate::WINDOWS_PORTABLE
+            && let Ok(status) = windows::status()
+        {
             return status;
         }
         lock(&self.inner.update).status.clone()
     }
     pub fn execute_update_command(&self, command: Command) -> ApiResult<UpdateStatus> {
+        if crate::WINDOWS_PORTABLE {
+            return Err(api_error(Error::NotConfigured));
+        }
         match &command {
             Command::Install { expected_build } => tracing::info!(
                 command_type = "install",
@@ -458,7 +467,9 @@ mod windows;
 pub(crate) use windows::startup_gate;
 #[cfg(windows)]
 pub(crate) fn attach(node: &Node) {
-    windows::attach(node);
+    if !crate::WINDOWS_PORTABLE {
+        windows::attach(node);
+    }
 }
 #[cfg(not(windows))]
 pub(crate) fn attach(node: &Node) {
@@ -495,7 +506,7 @@ pub(crate) fn request_quit() {
             match node.prepare_for_update() {
                 Ok(token) => {
                     #[cfg(windows)]
-                    let saved = windows::user_quit();
+                    let saved = crate::WINDOWS_PORTABLE || windows::user_quit();
                     #[cfg(not(windows))]
                     let saved = {
                         let mut state = lock(&node.inner.update);

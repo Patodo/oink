@@ -1779,7 +1779,7 @@ impl AgentApi for Node {
         })
     }
     fn microphone_plugin_status(&self) -> ApiResult<crate::microphone_plugin::MicrophonePluginStatus> {
-        Ok(if self.inner.native_services {
+        Ok(if self.inner.native_services && !crate::WINDOWS_PORTABLE {
             crate::microphone_plugin::status()
         } else {
             crate::microphone_plugin::MicrophonePluginStatus::default()
@@ -1789,7 +1789,7 @@ impl AgentApi for Node {
         &self,
         action: crate::microphone_plugin::Action,
     ) -> ApiResult<crate::microphone_plugin::MicrophonePluginStatus> {
-        if !self.inner.native_services {
+        if !self.inner.native_services || crate::WINDOWS_PORTABLE {
             return Err(ApiError::Unsupported {
                 message: "Native installation unavailable".into(),
             });
@@ -1905,12 +1905,20 @@ impl AgentApi for Node {
     // Login registration is queried from the OS instead of persisted settings.
     // 平台模块登记相应应用入口；界面只显示后台返回/推送的实际系统状态。
     fn launch_at_login_status(&self) -> ApiResult<LaunchAtLoginStatus> {
+        if crate::WINDOWS_PORTABLE {
+            return Ok(LaunchAtLoginStatus::unavailable(
+                oink_autostart::LaunchAtLoginProblem::UnsupportedPlatform,
+            ));
+        }
         let mut status = oink_autostart::status(&*crate::prelogin::machine_layer(self));
         status.configured = self.settings().launch_at_login_configured;
         Ok(status)
     }
 
     fn set_launch_at_login(&self, enabled: bool) -> ApiResult<LaunchAtLoginStatus> {
+        if crate::WINDOWS_PORTABLE {
+            return self.launch_at_login_status();
+        }
         // The machine layer may wait for administrator approval: hold the owner
         // gate only for the durable settings edit, never across that prompt.
         match oink_autostart::set_enabled(enabled, &*crate::prelogin::machine_layer(self)) {
